@@ -66,6 +66,7 @@ impl C2DrawApp {
         self.diagram = Diagram::default();
         self.selected_element = None;
         self.file_path = None;
+        self.canvas.cancel_relationship();
     }
 
     fn save_diagram(&mut self) {
@@ -102,6 +103,7 @@ impl C2DrawApp {
                     self.diagram = diagram;
                     self.selected_element = None;
                     self.file_path = Some(path);
+                    self.canvas.cancel_relationship();
                 }
             }
         }
@@ -132,6 +134,27 @@ impl C2DrawApp {
         if let Some(id) = self.selected_element {
             self.diagram.remove_element(id);
             self.selected_element = None;
+            self.canvas.cancel_relationship();
+        }
+    }
+
+    fn start_relationship_mode(&mut self) {
+        if let Some(source_id) = self.selected_element {
+            // If an element is already selected, use it as the source
+            self.canvas.start_relationship(source_id);
+        }
+        // If no element selected, the user needs to select one on the canvas first
+    }
+
+    fn cancel_relationship_mode(&mut self) {
+        self.canvas.cancel_relationship();
+    }
+
+    fn get_relationship_status_text(&self) -> Option<String> {
+        if self.canvas.is_in_relationship_mode() {
+            Some("Click another element to create relationship".to_string())
+        } else {
+            None
         }
     }
 
@@ -143,22 +166,37 @@ impl C2DrawApp {
                 ui.separator();
 
                 ui.label("C1 - System Context");
-                if ui.button("➕ Person").clicked() {
+                if ui.button("➕ Person")
+                    .on_hover_text("Add an internal person/actor (e.g., Customer, Admin)")
+                    .clicked()
+                {
                     self.add_element(ElementType::person("New Person", "Description"));
                 }
-                if ui.button("➕ External Person").clicked() {
+                if ui.button("➕ External Person")
+                    .on_hover_text("Add an external person outside your organization (e.g., Public User)")
+                    .clicked()
+                {
                     self.add_element(ElementType::external_person("External User", "Description"));
                 }
-                if ui.button("➕ System").clicked() {
+                if ui.button("➕ System")
+                    .on_hover_text("Add an internal software system that you build/maintain")
+                    .clicked()
+                {
                     self.add_element(ElementType::system("New System", "Description"));
                 }
-                if ui.button("➕ External System").clicked() {
+                if ui.button("➕ External System")
+                    .on_hover_text("Add an external system outside your control (e.g., Third-party API)")
+                    .clicked()
+                {
                     self.add_element(ElementType::external_system("External System", "Description"));
                 }
 
                 ui.separator();
                 ui.label("C2 - Container");
-                if ui.button("➕ Web App").clicked() {
+                if ui.button("➕ Web App")
+                    .on_hover_text("Add a web application container (browser-based UI)")
+                    .clicked()
+                {
                     self.add_element(ElementType::container(
                         "Web Application",
                         "Description",
@@ -166,7 +204,10 @@ impl C2DrawApp {
                         "React/Spring Boot",
                     ));
                 }
-                if ui.button("➕ Database").clicked() {
+                if ui.button("➕ Database")
+                    .on_hover_text("Add a database container for data persistence")
+                    .clicked()
+                {
                     self.add_element(ElementType::container(
                         "Database",
                         "Description",
@@ -174,7 +215,10 @@ impl C2DrawApp {
                         "PostgreSQL",
                     ));
                 }
-                if ui.button("➕ Queue").clicked() {
+                if ui.button("➕ Queue")
+                    .on_hover_text("Add a message queue for async communication")
+                    .clicked()
+                {
                     self.add_element(ElementType::container(
                         "Message Queue",
                         "Description",
@@ -185,11 +229,39 @@ impl C2DrawApp {
 
                 ui.separator();
                 ui.label("Actions");
-                if ui.button("🔗 Add Relationship").clicked() {
-                    // Relationship creation mode would be implemented here
+
+                // Relationship button with dynamic state
+                let rel_button = ui.button("🔗 Add Relationship");
+                let rel_tooltip = if self.canvas.is_in_relationship_mode() {
+                    "Click another element to complete the relationship"
+                } else {
+                    "Start creating a relationship. First select a source element, then click this button."
+                };
+                if rel_button.on_hover_text(rel_tooltip).clicked() {
+                    self.start_relationship_mode();
                 }
-                if ui.button("🗑️ Delete Selected").clicked() {
+
+                // Cancel relationship mode button (only show when in relationship mode)
+                if self.canvas.is_in_relationship_mode() {
+                    if ui.button("❌ Cancel Relationship")
+                        .on_hover_text("Cancel the current relationship creation")
+                        .clicked()
+                    {
+                        self.cancel_relationship_mode();
+                    }
+                }
+
+                if ui.button("🗑️ Delete Selected")
+                    .on_hover_text("Delete the currently selected element and all its relationships")
+                    .clicked()
+                {
                     self.delete_selected();
+                }
+
+                // Show relationship mode status
+                if let Some(status) = self.get_relationship_status_text() {
+                    ui.separator();
+                    ui.colored_label(Color32::from_rgb(0, 120, 215), status);
                 }
             });
     }
@@ -219,9 +291,13 @@ impl C2DrawApp {
                         element.set_description(desc);
 
                         ui.separator();
-                        if ui.button("Delete Element").clicked() {
+                        if ui.button("Delete Element")
+                            .on_hover_text("Remove this element from the diagram")
+                            .clicked()
+                        {
                             self.diagram.remove_element(id);
                             self.selected_element = None;
+                            self.canvas.cancel_relationship();
                         }
                     }
                 } else {
@@ -258,11 +334,17 @@ impl C2DrawApp {
                 });
 
                 ui.menu_button("Export", |ui| {
-                    if ui.button("C4-PlantUML...").clicked() {
+                    if ui.button("C4-PlantUML...")
+                        .on_hover_text("Export diagram to PlantUML format (requires PlantUML to render)")
+                        .clicked()
+                    {
                         self.export_plantuml();
                         ui.close();
                     }
-                    if ui.button("Mermaid...").clicked() {
+                    if ui.button("Mermaid...")
+                        .on_hover_text("Export diagram to Mermaid format (works in GitHub, Notion, etc.)")
+                        .clicked()
+                    {
                         self.export_mermaid();
                         ui.close();
                     }
@@ -270,8 +352,10 @@ impl C2DrawApp {
 
                 ui.menu_button("View", |ui| {
                     ui.label("Diagram Type");
-                    ui.radio_value(&mut self.diagram.diagram_type, DiagramType::SystemContext, "System Context (C1)");
-                    ui.radio_value(&mut self.diagram.diagram_type, DiagramType::Container, "Container (C2)");
+                    ui.radio_value(&mut self.diagram.diagram_type, DiagramType::SystemContext, "System Context (C1)")
+                        .on_hover_text("Show system-level view (people and systems)");
+                    ui.radio_value(&mut self.diagram.diagram_type, DiagramType::Container, "Container (C2)")
+                        .on_hover_text("Show container-level view (apps, databases, etc.)");
                 });
             });
         });
@@ -294,7 +378,10 @@ impl C2DrawApp {
                     });
 
                     ui.horizontal(|ui| {
-                        if ui.button("Copy to Clipboard").clicked() {
+                        if ui.button("Copy to Clipboard")
+                            .on_hover_text("Copy the export code to your clipboard")
+                            .clicked()
+                        {
                             ctx.copy_text(self.export_content.clone());
                         }
                         if ui.button("Close").clicked() {
@@ -315,13 +402,26 @@ impl eframe::App for C2DrawApp {
         CentralPanel::default()
             .frame(egui::Frame::central_panel(&ctx.style()).fill(Color32::from_gray(240)))
             .show(ctx, |ui| {
-                // Render the canvas
-                self.canvas.render(
+                // Render the canvas - it returns the target element ID if in relationship mode
+                let clicked_target = self.canvas.render(
                     ui,
                     &mut self.diagram.elements,
                     &self.diagram.relationships,
                     &mut self.selected_element,
                 );
+
+                // Handle relationship creation if a target was clicked
+                if let Some(target_id) = clicked_target {
+                    if let Some(source_id) = self.canvas.relationship_source {
+                        self.diagram.add_relationship(Relationship::new(
+                            source_id,
+                            target_id,
+                            "uses",
+                        ));
+                        self.canvas.cancel_relationship();
+                        self.selected_element = Some(target_id);
+                    }
+                }
             });
 
         self.render_export_window(ctx);

@@ -1,4 +1,4 @@
-use crate::model::{Element, ElementId, ElementType, Position, Relationship, Size};
+use crate::model::{Element, ElementId, Position, Relationship, Size};
 use egui::{Color32, Pos2, Rect, Response, Stroke, StrokeKind, Ui, Vec2};
 use std::collections::HashMap;
 
@@ -7,7 +7,8 @@ pub struct Canvas {
     pub offset: Vec2,
     pub scale: f32,
     dragging: Option<ElementId>,
-    drag_start: Option<Pos2>,
+    /// If Some(source_id), we're in relationship creation mode waiting for target
+    pub relationship_source: Option<ElementId>,
 }
 
 impl Default for Canvas {
@@ -16,7 +17,7 @@ impl Default for Canvas {
             offset: Vec2::ZERO,
             scale: 1.0,
             dragging: None,
-            drag_start: None,
+            relationship_source: None,
         }
     }
 }
@@ -26,18 +27,35 @@ impl Canvas {
         Self::default()
     }
 
+    /// Check if we're in relationship creation mode
+    pub fn is_in_relationship_mode(&self) -> bool {
+        self.relationship_source.is_some()
+    }
+
+    /// Start relationship creation mode
+    pub fn start_relationship(&mut self, source_id: ElementId) {
+        self.relationship_source = Some(source_id);
+    }
+
+    /// Cancel relationship creation mode
+    pub fn cancel_relationship(&mut self) {
+        self.relationship_source = None;
+    }
+
     /// Render the canvas with all elements and relationships
+    /// Returns the ID of an element clicked for relationship (if in relationship mode), or None
     pub fn render(
         &mut self,
         ui: &mut Ui,
         elements: &mut HashMap<ElementId, Element>,
         relationships: &[Relationship],
         selected_element: &mut Option<ElementId>,
-    ) -> Response {
+    ) -> Option<ElementId> {
         let available_size = ui.available_size();
         let (response, painter) = ui.allocate_painter(available_size, egui::Sense::click_and_drag());
 
         let canvas_rect = response.rect;
+        let relationship_mode = self.relationship_source.is_some();
 
         // Fill canvas background
         painter.rect_filled(canvas_rect, 0.0, Color32::from_gray(245));
@@ -55,19 +73,32 @@ impl Canvas {
             }
         }
 
+        // Draw preview relationship if in relationship mode
+        if let Some(source_id) = self.relationship_source {
+            if let Some(source) = elements.get(&source_id) {
+                if let Some(mouse_pos) = response.hover_pos() {
+                    self.draw_preview_relationship(&painter, source, mouse_pos);
+                }
+            }
+        }
+
         // Draw elements
         let mut element_responses: Vec<(ElementId, Response)> = Vec::new();
 
         for element in elements.values_mut() {
-            let element_response = self.draw_element(ui, element, clip_rect, selected_element);
+            let element_response = self.draw_element(ui, element, clip_rect, selected_element, relationship_mode);
             element_responses.push((element.id, element_response));
         }
 
         // Handle interactions
+        let mut clicked_element_for_relationship: Option<ElementId> = None;
+
         for (id, response) in element_responses {
             if response.drag_started() {
                 self.dragging = Some(id);
-                *selected_element = Some(id);
+                if !relationship_mode {
+                    *selected_element = Some(id);
+                }
             }
 
             if response.dragged() {
@@ -85,16 +116,26 @@ impl Canvas {
             }
 
             if response.clicked() {
-                *selected_element = Some(id);
+                if relationship_mode {
+                    // In relationship mode, check if this is a valid target
+                    if let Some(source_id) = self.relationship_source {
+                        if source_id != id {
+                            clicked_element_for_relationship = Some(id);
+                        }
+                    }
+                } else {
+                    // Normal selection mode
+                    *selected_element = Some(id);
+                }
             }
         }
 
-        // Deselect when clicking on empty canvas
-        if response.clicked() && !response.dragged() {
+        // Deselect when clicking on empty canvas (only in normal mode)
+        if response.clicked() && !response.dragged() && !relationship_mode {
             *selected_element = None;
         }
 
-        response
+        clicked_element_for_relationship
     }
 
     fn draw_grid(&self, painter: &egui::Painter, rect: Rect) {
@@ -128,6 +169,7 @@ impl Canvas {
         element: &Element,
         clip_rect: Rect,
         selected_element: &Option<ElementId>,
+        relationship_mode_active: bool,
     ) -> Response {
         let rect = Rect::from_min_size(
             element.position.to_pos2(),
@@ -140,7 +182,11 @@ impl Canvas {
         }
 
         let is_selected = selected_element.map_or(false, |id| id == element.id);
-        let (bg_color, border_color) = crate::ui::element_colors(element, is_selected);
+        // Highlight if selected or if it's the relationship source
+        let is_relationship_source = self.relationship_source.map_or(false, |id| id == element.id);
+        let highlight = is_selected || is_relationship_source;
+
+        let (bg_color, border_color) = crate::ui::element_colors(element, highlight);
 
         // Draw shadow
         let shadow_rect = rect.translate(Vec2::new(3.0, 3.0));
@@ -149,12 +195,17 @@ impl Canvas {
         // Draw element background
         ui.painter().rect_filled(rect, 4.0, bg_color);
 
-        // Draw border
-        let stroke_width = if is_selected { 3.0 } else { 2.0 };
+        // Draw border (thicker if selected or in relationship mode)
+        let stroke_width = if highlight { 3.0 } else { 2.0 };
+        let final_border_color = if is_relationship_source {
+            Color32::from_rgb(0, 150, 0) // Green highlight for relationship source
+        } else {
+            border_color
+        };
         ui.painter().rect_stroke(
             rect,
             4.0,
-            Stroke::new(stroke_width, border_color),
+            Stroke::new(stroke_width, final_border_color),
             StrokeKind::Middle,
         );
 
@@ -241,6 +292,45 @@ impl Canvas {
             egui::FontId::proportional(10.0),
             Color32::from_gray(60),
         );
+    }
+
+    fn draw_preview_relationship(
+        &self,
+        painter: &egui::Painter,
+        source: &Element,
+        mouse_pos: Pos2,
+    ) {
+        let source_pos = source.position;
+        let source_size = source.size;
+
+        let source_center = Pos2::new(
+            source_pos.x + source_size.width * 0.5,
+            source_pos.y + source_size.height * 0.5,
+        );
+
+        // Calculate edge point from source
+        let source_edge = self.calculate_edge_point(source_pos, source_size, mouse_pos);
+
+        // Draw dashed preview line
+        let preview_color = Color32::from_rgb(0, 150, 0);
+        painter.line_segment(
+            [source_edge, mouse_pos],
+            Stroke::new(2.0, preview_color),
+        );
+
+        // Draw preview arrowhead at mouse position
+        let direction = (mouse_pos - source_edge).normalized();
+        let perpendicular = Vec2::new(-direction.y, direction.x);
+        let arrow_size = 10.0;
+        let base = mouse_pos - direction * arrow_size;
+        let p1 = base + perpendicular * arrow_size * 0.5;
+        let p2 = base - perpendicular * arrow_size * 0.5;
+
+        painter.add(egui::Shape::convex_polygon(
+            vec![mouse_pos, p1, p2],
+            preview_color,
+            Stroke::new(1.0, preview_color),
+        ));
     }
 
     fn calculate_edge_point(&self, position: Position, size: Size, target: Pos2) -> Pos2 {
