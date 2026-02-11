@@ -1,9 +1,4 @@
-mod app;
-mod export;
-mod model;
-mod ui;
-
-use app::C2DrawApp;
+use c2draw::app::C2DrawApp;
 
 fn main() -> eframe::Result {
     let options = eframe::NativeOptions {

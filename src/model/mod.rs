@@ -104,3 +104,207 @@ pub trait Positioned {
     fn size(&self) -> Size;
     fn set_size(&mut self, size: Size);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Test helper struct for Positioned trait
+    struct TestPositionable {
+        pos: Position,
+        sz: Size,
+    }
+
+    impl TestPositionable {
+        fn new(pos: Position, sz: Size) -> Self {
+            Self { pos, sz }
+        }
+    }
+
+    impl Positioned for TestPositionable {
+        fn position(&self) -> Position {
+            self.pos
+        }
+
+        fn set_position(&mut self, position: Position) {
+            self.pos = position;
+        }
+
+        fn size(&self) -> Size {
+            self.sz
+        }
+
+        fn set_size(&mut self, size: Size) {
+            self.sz = size;
+        }
+    }
+
+    mod position_tests {
+        use super::*;
+
+        /// Verifies Position::new creates a position with correct coordinates
+        #[test]
+        fn position_new_creates_correct_position() {
+            let pos = Position::new(10.0, 20.0);
+            assert_eq!(pos.x, 10.0);
+            assert_eq!(pos.y, 20.0);
+        }
+
+        /// Verifies Position can be converted to egui::Pos2 and back
+        #[test]
+        fn position_to_pos2_roundtrip() {
+            let pos = Position::new(15.5, 25.5);
+            let pos2 = pos.to_pos2();
+            assert_eq!(pos2.x, 15.5);
+            assert_eq!(pos2.y, 25.5);
+
+            let back = Position::from_pos2(pos2);
+            assert_eq!(back.x, 15.5);
+            assert_eq!(back.y, 25.5);
+        }
+
+        /// Verifies Position addition works correctly
+        #[test]
+        fn position_addition() {
+            let pos1 = Position::new(10.0, 20.0);
+            let pos2 = Position::new(5.0, 8.0);
+            let result = pos1 + pos2;
+            assert_eq!(result.x, 15.0);
+            assert_eq!(result.y, 28.0);
+        }
+
+        /// Verifies Position addition with egui::Vec2 works correctly
+        #[test]
+        fn position_add_vec2() {
+            let pos = Position::new(10.0, 20.0);
+            let vec = egui::Vec2::new(5.0, 8.0);
+            let result = pos + vec;
+            assert_eq!(result.x, 15.0);
+            assert_eq!(result.y, 28.0);
+        }
+
+        /// Verifies Position subtraction returns correct egui::Vec2
+        #[test]
+        fn position_subtraction() {
+            let pos1 = Position::new(10.0, 20.0);
+            let pos2 = Position::new(3.0, 5.0);
+            let result = pos1 - pos2;
+            assert_eq!(result.x, 7.0);
+            assert_eq!(result.y, 15.0);
+        }
+
+        /// Verifies Position scalar multiplication works correctly
+        #[test]
+        fn position_scalar_multiplication() {
+            let pos = Position::new(10.0, 20.0);
+            let result = pos * 2.0;
+            assert_eq!(result.x, 20.0);
+            assert_eq!(result.y, 40.0);
+        }
+
+        /// Verifies Position implements Clone correctly
+        #[test]
+        fn position_clone() {
+            let pos = Position::new(10.0, 20.0);
+            let cloned = pos.clone();
+            assert_eq!(pos.x, cloned.x);
+            assert_eq!(pos.y, cloned.y);
+        }
+
+        /// Verifies Position implements Copy correctly
+        #[test]
+        fn position_copy() {
+            let pos = Position::new(10.0, 20.0);
+            let copied = pos;
+            assert_eq!(pos.x, copied.x);
+            assert_eq!(pos.y, copied.y);
+        }
+    }
+
+    mod size_tests {
+        use super::*;
+
+        /// Verifies Size::new creates a size with correct dimensions
+        #[test]
+        fn size_new_creates_correct_size() {
+            let size = Size::new(100.0, 200.0);
+            assert_eq!(size.width, 100.0);
+            assert_eq!(size.height, 200.0);
+        }
+
+        /// Verifies Size can be converted to egui::Vec2 and back
+        #[test]
+        fn size_to_vec2_roundtrip() {
+            let size = Size::new(150.5, 250.5);
+            let vec2 = size.to_vec2();
+            assert_eq!(vec2.x, 150.5);
+            assert_eq!(vec2.y, 250.5);
+
+            let back = Size::from_vec2(vec2);
+            assert_eq!(back.width, 150.5);
+            assert_eq!(back.height, 250.5);
+        }
+
+        /// Verifies Size scalar multiplication scales both dimensions
+        #[test]
+        fn size_scalar_multiplication() {
+            let size = Size::new(100.0, 200.0);
+            let result = size * 0.5;
+            assert_eq!(result.width, 50.0);
+            assert_eq!(result.height, 100.0);
+        }
+
+        /// Verifies Size implements Clone correctly
+        #[test]
+        fn size_clone() {
+            let size = Size::new(100.0, 200.0);
+            let cloned = size.clone();
+            assert_eq!(size.width, cloned.width);
+            assert_eq!(size.height, cloned.height);
+        }
+
+        /// Verifies Size implements Copy correctly
+        #[test]
+        fn size_copy() {
+            let size = Size::new(100.0, 200.0);
+            let copied = size;
+            assert_eq!(size.width, copied.width);
+            assert_eq!(size.height, copied.height);
+        }
+    }
+
+    mod positioned_trait_tests {
+        use super::*;
+
+        /// Verifies Positioned trait getters work correctly
+        #[test]
+        fn positioned_getters() {
+            let test = TestPositionable::new(
+                Position::new(10.0, 20.0),
+                Size::new(100.0, 200.0),
+            );
+
+            assert_eq!(test.position().x, 10.0);
+            assert_eq!(test.position().y, 20.0);
+            assert_eq!(test.size().width, 100.0);
+            assert_eq!(test.size().height, 200.0);
+        }
+
+        /// Verifies Positioned trait setters work correctly
+        #[test]
+        fn positioned_setters() {
+            let mut test = TestPositionable::new(
+                Position::new(0.0, 0.0),
+                Size::new(50.0, 50.0),
+            );
+
+            test.set_position(Position::new(30.0, 40.0));
+            test.set_size(Size::new(150.0, 250.0));
+
+            assert_eq!(test.position().x, 30.0);
+            assert_eq!(test.position().y, 40.0);
+            assert_eq!(test.size().width, 150.0);
+            assert_eq!(test.size().height, 250.0);
+        }
+    }
+}

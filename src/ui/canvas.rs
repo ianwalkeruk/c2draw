@@ -390,3 +390,241 @@ fn truncate_text(text: &str, max_len: usize) -> String {
         format!("{}...", truncated)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::{Element, ElementId, ElementType, Position, Size};
+
+    mod canvas_creation_tests {
+        use super::*;
+
+        /// Verifies Canvas::new creates canvas with default values
+        #[test]
+        fn canvas_new_creates_default_canvas() {
+            let canvas = Canvas::new();
+            assert_eq!(canvas.offset, Vec2::ZERO);
+            assert_eq!(canvas.scale, 1.0);
+            assert!(canvas.dragging.is_none());
+            assert!(canvas.relationship_source.is_none());
+        }
+
+        /// Verifies Canvas implements Default
+        #[test]
+        fn canvas_default() {
+            let canvas = Canvas::default();
+            assert_eq!(canvas.scale, 1.0);
+            assert!(canvas.relationship_source.is_none());
+        }
+    }
+
+    mod relationship_mode_tests {
+        use super::*;
+
+        /// Verifies is_in_relationship_mode returns false when not in relationship mode
+        #[test]
+        fn is_in_relationship_mode_returns_false_when_not_active() {
+            let canvas = Canvas::new();
+            assert!(!canvas.is_in_relationship_mode());
+        }
+
+        /// Verifies is_in_relationship_mode returns true when in relationship mode
+        #[test]
+        fn is_in_relationship_mode_returns_true_when_active() {
+            let mut canvas = Canvas::new();
+            let element_id = ElementId::new_v4();
+            canvas.start_relationship(element_id);
+            assert!(canvas.is_in_relationship_mode());
+        }
+
+        /// Verifies start_relationship sets the relationship source
+        #[test]
+        fn start_relationship_sets_source() {
+            let mut canvas = Canvas::new();
+            let element_id = ElementId::new_v4();
+            canvas.start_relationship(element_id);
+            assert_eq!(canvas.relationship_source, Some(element_id));
+        }
+
+        /// Verifies cancel_relationship clears the relationship source
+        #[test]
+        fn cancel_relationship_clears_source() {
+            let mut canvas = Canvas::new();
+            let element_id = ElementId::new_v4();
+            canvas.start_relationship(element_id);
+            canvas.cancel_relationship();
+            assert!(canvas.relationship_source.is_none());
+        }
+    }
+
+    mod calculate_edge_point_tests {
+        use super::*;
+
+        /// Helper to create a test canvas
+        fn test_canvas() -> Canvas {
+            Canvas::new()
+        }
+
+        /// Verifies calculate_edge_point returns reasonable value when target is at center
+        /// Note: When target is exactly at center, direction is zero which is an edge case
+        /// The algorithm may return NaN or infinity, so we just verify it doesn't panic
+        #[test]
+        fn calculate_edge_point_target_at_center() {
+            let canvas = test_canvas();
+            let position = Position::new(0.0, 0.0);
+            let size = Size::new(100.0, 100.0);
+            let target = Pos2::new(50.0, 50.0); // Same as center
+
+            // This should not panic - the actual value is undefined when target is at center
+            let _edge = canvas.calculate_edge_point(position, size, target);
+        }
+
+        /// Verifies calculate_edge_point returns correct point when target is to the right
+        #[test]
+        fn calculate_edge_point_target_to_right() {
+            let canvas = test_canvas();
+            let position = Position::new(0.0, 0.0);
+            let size = Size::new(100.0, 100.0);
+            let target = Pos2::new(200.0, 50.0); // To the right, same height
+
+            let edge = canvas.calculate_edge_point(position, size, target);
+            // Should be on the right edge
+            assert_eq!(edge.x, 100.0); // Right edge
+            assert_eq!(edge.y, 50.0);  // Center Y
+        }
+
+        /// Verifies calculate_edge_point returns correct point when target is to the left
+        #[test]
+        fn calculate_edge_point_target_to_left() {
+            let canvas = test_canvas();
+            let position = Position::new(100.0, 0.0);
+            let size = Size::new(100.0, 100.0);
+            let target = Pos2::new(-50.0, 50.0); // To the left
+
+            let edge = canvas.calculate_edge_point(position, size, target);
+            // Should be on the left edge
+            assert_eq!(edge.x, 100.0); // Left edge of the rect at position 100
+            assert_eq!(edge.y, 50.0);  // Center Y
+        }
+
+        /// Verifies calculate_edge_point returns correct point when target is above
+        #[test]
+        fn calculate_edge_point_target_above() {
+            let canvas = test_canvas();
+            let position = Position::new(0.0, 100.0);
+            let size = Size::new(100.0, 100.0);
+            let target = Pos2::new(50.0, -50.0); // Above
+
+            let edge = canvas.calculate_edge_point(position, size, target);
+            // Should be on the top edge
+            assert_eq!(edge.x, 50.0);  // Center X
+            assert_eq!(edge.y, 100.0); // Top edge
+        }
+
+        /// Verifies calculate_edge_point returns correct point when target is below
+        #[test]
+        fn calculate_edge_point_target_below() {
+            let canvas = test_canvas();
+            let position = Position::new(0.0, 0.0);
+            let size = Size::new(100.0, 100.0);
+            let target = Pos2::new(50.0, 200.0); // Below
+
+            let edge = canvas.calculate_edge_point(position, size, target);
+            // Should be on the bottom edge
+            assert_eq!(edge.x, 50.0);  // Center X
+            assert_eq!(edge.y, 100.0); // Bottom edge
+        }
+
+        /// Verifies calculate_edge_point handles different sized rectangles
+        #[test]
+        fn calculate_edge_point_different_sizes() {
+            let canvas = test_canvas();
+            let position = Position::new(0.0, 0.0);
+            let size = Size::new(200.0, 50.0); // Wide rectangle
+            let target = Pos2::new(300.0, 25.0); // To the right
+
+            let edge = canvas.calculate_edge_point(position, size, target);
+            assert_eq!(edge.x, 200.0); // Right edge
+            assert_eq!(edge.y, 25.0);  // Center Y
+        }
+
+        /// Verifies calculate_edge_point handles diagonal targets
+        #[test]
+        fn calculate_edge_point_diagonal_target() {
+            let canvas = test_canvas();
+            let position = Position::new(0.0, 0.0);
+            let size = Size::new(100.0, 100.0);
+            // Target is diagonally up-right
+            let target = Pos2::new(200.0, -100.0);
+
+            let edge = canvas.calculate_edge_point(position, size, target);
+            // Should hit a corner or edge depending on aspect ratio
+            // For a square, going diagonally should hit a corner
+            assert!(edge.x >= 0.0 && edge.x <= 100.0);
+            assert!(edge.y >= 0.0 && edge.y <= 100.0);
+        }
+    }
+
+    mod truncate_text_tests {
+        use super::*;
+
+        /// Verifies truncate_text returns original text when within limit
+        #[test]
+        fn truncate_text_short_text_unchanged() {
+            let text = "Short text";
+            let result = truncate_text(text, 25);
+            assert_eq!(result, "Short text");
+        }
+
+        /// Verifies truncate_text returns original text when exactly at limit
+        #[test]
+        fn truncate_text_exact_limit_unchanged() {
+            let text = "1234567890123456789012345"; // 25 chars
+            let result = truncate_text(text, 25);
+            assert_eq!(result, "1234567890123456789012345");
+        }
+
+        /// Verifies truncate_text truncates long text with ellipsis
+        #[test]
+        fn truncate_text_long_text_truncated() {
+            let text = "This is a very long text that should be truncated";
+            let result = truncate_text(text, 10);
+            assert_eq!(result, "This is a ...");
+        }
+
+        /// Verifies truncate_text handles empty string
+        #[test]
+        fn truncate_text_empty_string() {
+            let text = "";
+            let result = truncate_text(text, 25);
+            assert_eq!(result, "");
+        }
+
+        /// Verifies truncate_text handles unicode characters correctly
+        #[test]
+        fn truncate_text_unicode_characters() {
+            let text = "日本語のテキストを切り詰めるテスト";
+            let result = truncate_text(text, 5);
+            assert!(result.ends_with("..."));
+            // Should have 5 chars + "..."
+            assert_eq!(result.chars().count(), 8);
+        }
+
+        /// Verifies truncate_text handles emoji correctly
+        #[test]
+        fn truncate_text_emoji() {
+            let text = "👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦"; // 5 family emojis
+            let result = truncate_text(text, 3);
+            // Each emoji counts as multiple chars due to ZWJ sequences
+            assert!(result.ends_with("..."));
+        }
+
+        /// Verifies truncate_text with zero max_len returns just ellipsis
+        #[test]
+        fn truncate_text_zero_limit() {
+            let text = "Any text";
+            let result = truncate_text(text, 0);
+            assert_eq!(result, "...");
+        }
+    }
+}

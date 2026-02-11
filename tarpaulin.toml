@@ -1,0 +1,97 @@
+# Tarpaulin configuration for C2Draw code coverage
+# See: https://github.com/xd009642/tarpaulin
+
+# Coverage engine to use (llvm is faster and more accurate)
+engine = "Llvm"
+
+# Output formats for coverage reports
+out = [
+    "Html",
+    "Xml",
+    "Stdout"
+]
+
+# Directory for coverage reports
+output-dir = "target/tarpaulin"
+
+# Run all tests including doc tests
+run-types = ["Tests", "Doctests"]
+
+# Include all source files in src/
+include-files = ["src/**/*.rs"]
+
+# Exclude test files from coverage
+exclude-files = [
+    "tests/*",
+    "**/tests.rs",
+    "**/*_tests.rs",
+]
+
+# Exclude certain patterns from coverage
+exclude = [
+    # Skip auto-generated code
+    "**/target/**",
+    # Skip main.rs (entry point with minimal logic)
+    "src/main.rs",
+]
+
+# Fail the build if coverage falls below this threshold
+# Uncomment and adjust as needed:
+# fail-under = 70
+
+# Don't fail on uncovered lines in tests
+# (tests themselves are not typically measured for coverage)
+ignore-tests = true
+
+# Include branch coverage
+branch = true
+
+# Line coverage is enabled by default
+line = true
+
+# Print coverage summary to stdout
+verbose = true
+
+# Don't clean the target directory between runs
+# (faster for repeated test runs)
+# skip-clean = true
+
+# Number of test threads to use
+# (0 = use all available cores)
+# test-threads = 0
+
+# Additional arguments to pass to the test binary
+# args = []
+
+# Environment variables for tests
+# [env]
+# RUST_BACKTRACE = "1"
+
+# Workspace members to include in coverage
+# (empty = all members)
+# workspace = []
+
+# Packages to include in coverage
+# (empty = all packages)
+# packages = []
+
+# Features to enable during testing
+# features = ""
+
+# All features to enable
+# all-features = false
+
+# No default features
+# no-default-features = false
+
+# Target directory for coverage builds
+# target-dir = "target/coverage"
+
+# Timeout for test execution in seconds
+# timeout = "5m"
+
+# Follow symlinks when looking for source files
+# follow-path-symlinks = true
+
+# Color output in terminal
+# force-color = true
