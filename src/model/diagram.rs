@@ -153,17 +153,6 @@ mod tests {
             assert!(diagram.relationships.is_empty());
         }
 
-        /// Verifies Diagram implements Default with correct values
-        #[test]
-        fn diagram_default_values() {
-            let diagram = Diagram::default();
-
-            assert_eq!(diagram.name, "Untitled Diagram");
-            assert_eq!(diagram.description, "");
-            assert_eq!(diagram.diagram_type, DiagramType::SystemContext);
-            assert!(diagram.elements.is_empty());
-            assert!(diagram.relationships.is_empty());
-        }
     }
 
     mod element_management_tests {

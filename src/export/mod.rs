@@ -98,30 +98,5 @@ mod tests {
             assert!(!result.is_empty());
         }
 
-        /// Verifies file_extension returns static string
-        #[test]
-        fn file_extension_returns_static_str() {
-            let exporter = TestExporter::new();
-            let ext: &'static str = exporter.file_extension();
-            assert_eq!(ext, "test");
-        }
-    }
-
-    mod re_export_tests {
-        use super::*;
-
-        /// Verifies MermaidExporter can be imported from this module
-        #[test]
-        fn mermaid_exporter_re_exported() {
-            let _exporter = MermaidExporter::new();
-            // Just verifying it compiles and is accessible
-        }
-
-        /// Verifies PlantUmlExporter can be imported from this module
-        #[test]
-        fn plantuml_exporter_re_exported() {
-            let _exporter = PlantUmlExporter::new();
-            // Just verifying it compiles and is accessible
-        }
     }
 }

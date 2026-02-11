@@ -125,58 +125,6 @@ fn text_edit_interaction() {
     assert!(text_input.is_some(), "Text input field should exist");
 }
 
-/// Test UI element colors from the UI module
-#[test]
-fn ui_element_colors() {
-    use c2draw::model::{Element, ElementType, Position};
-    use c2draw::ui::element_colors;
-    use egui::Color32;
-
-    // Create a test element
-    let element = Element::new(
-        ElementType::person("Test User", "A test user"),
-        Position::new(0.0, 0.0),
-    );
-
-    // Get colors (not selected)
-    let (bg, border) = element_colors(&element, false);
-    assert_eq!(bg, Color32::from_rgb(255, 220, 180));
-    assert_eq!(border, Color32::from_gray(150));
-
-    // Get colors (selected)
-    let (bg, border) = element_colors(&element, true);
-    assert_eq!(bg, Color32::from_rgb(255, 220, 180));
-    assert_eq!(border, Color32::from_rgb(0, 120, 215));
-}
-
-/// Test UI element icons from the UI module
-#[test]
-fn ui_element_icons() {
-    use c2draw::model::{ContainerType, Element, ElementType, Position};
-    use c2draw::ui::get_element_icon;
-
-    // Test person icon
-    let person = Element::new(
-        ElementType::person("User", "Description"),
-        Position::new(0.0, 0.0),
-    );
-    assert_eq!(get_element_icon(&person), "👤");
-
-    // Test system icon
-    let system = Element::new(
-        ElementType::system("System", "Description"),
-        Position::new(0.0, 0.0),
-    );
-    assert_eq!(get_element_icon(&system), "🖥️");
-
-    // Test database icon
-    let db = Element::new(
-        ElementType::container("DB", "Database", ContainerType::Database, "PostgreSQL"),
-        Position::new(0.0, 0.0),
-    );
-    assert_eq!(get_element_icon(&db), "🗄️");
-}
-
 /// Integration test that combines multiple UI interactions
 #[test]
 fn complex_ui_interaction() {

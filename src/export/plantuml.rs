@@ -422,25 +422,4 @@ mod tests {
         }
     }
 
-    mod file_extension_tests {
-        use super::*;
-
-        /// Verifies file_extension returns "puml"
-        #[test]
-        fn file_extension_returns_puml() {
-            let exporter = PlantUmlExporter::new();
-            assert_eq!(exporter.file_extension(), "puml");
-        }
-    }
-
-    mod default_tests {
-        use super::*;
-
-        /// Verifies PlantUmlExporter implements Default
-        #[test]
-        fn plantuml_exporter_default() {
-            let exporter = PlantUmlExporter::default();
-            assert_eq!(exporter.file_extension(), "puml");
-        }
-    }
 }

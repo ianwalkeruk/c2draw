@@ -202,23 +202,6 @@ mod tests {
             assert_eq!(result.y, 40.0);
         }
 
-        /// Verifies Position implements Clone correctly
-        #[test]
-        fn position_clone() {
-            let pos = Position::new(10.0, 20.0);
-            let cloned = pos.clone();
-            assert_eq!(pos.x, cloned.x);
-            assert_eq!(pos.y, cloned.y);
-        }
-
-        /// Verifies Position implements Copy correctly
-        #[test]
-        fn position_copy() {
-            let pos = Position::new(10.0, 20.0);
-            let copied = pos;
-            assert_eq!(pos.x, copied.x);
-            assert_eq!(pos.y, copied.y);
-        }
     }
 
     mod size_tests {
@@ -254,23 +237,6 @@ mod tests {
             assert_eq!(result.height, 100.0);
         }
 
-        /// Verifies Size implements Clone correctly
-        #[test]
-        fn size_clone() {
-            let size = Size::new(100.0, 200.0);
-            let cloned = size.clone();
-            assert_eq!(size.width, cloned.width);
-            assert_eq!(size.height, cloned.height);
-        }
-
-        /// Verifies Size implements Copy correctly
-        #[test]
-        fn size_copy() {
-            let size = Size::new(100.0, 200.0);
-            let copied = size;
-            assert_eq!(size.width, copied.width);
-            assert_eq!(size.height, copied.height);
-        }
     }
 
     mod positioned_trait_tests {

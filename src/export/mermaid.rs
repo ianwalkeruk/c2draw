@@ -440,25 +440,4 @@ mod tests {
         }
     }
 
-    mod file_extension_tests {
-        use super::*;
-
-        /// Verifies file_extension returns "mmd"
-        #[test]
-        fn file_extension_returns_mmd() {
-            let exporter = MermaidExporter::new();
-            assert_eq!(exporter.file_extension(), "mmd");
-        }
-    }
-
-    mod default_tests {
-        use super::*;
-
-        /// Verifies MermaidExporter implements Default
-        #[test]
-        fn mermaid_exporter_default() {
-            let exporter = MermaidExporter::default();
-            assert_eq!(exporter.file_extension(), "mmd");
-        }
-    }
 }

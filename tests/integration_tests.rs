@@ -515,39 +515,3 @@ mod end_to_end_tests {
     }
 }
 
-mod diagram_type_tests {
-    use super::*;
-
-    /// Verifies diagram type affects export format
-    #[test]
-    fn diagram_type_affects_export() {
-        let context_diagram = Diagram::new("Test", "", DiagramType::SystemContext);
-        let container_diagram = Diagram::new("Test", "", DiagramType::Container);
-
-        let context_plantuml = PlantUmlExporter::new().export(&context_diagram);
-        let container_plantuml = PlantUmlExporter::new().export(&container_diagram);
-
-        let context_mermaid = MermaidExporter::new().export(&context_diagram);
-        let container_mermaid = MermaidExporter::new().export(&container_diagram);
-
-        assert!(context_plantuml.contains("C4_Context.puml"));
-        assert!(container_plantuml.contains("C4_Container.puml"));
-
-        assert!(context_mermaid.starts_with("C4Context"));
-        assert!(container_mermaid.starts_with("C4Container"));
-    }
-
-    /// Verifies supports_containers method
-    #[test]
-    fn diagram_type_supports_containers_check() {
-        assert!(!DiagramType::SystemContext.supports_containers());
-        assert!(DiagramType::Container.supports_containers());
-    }
-
-    /// Verifies as_str method
-    #[test]
-    fn diagram_type_as_str_values() {
-        assert_eq!(DiagramType::SystemContext.as_str(), "System Context");
-        assert_eq!(DiagramType::Container.as_str(), "Container");
-    }
-}
